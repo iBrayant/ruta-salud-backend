@@ -1,0 +1,33 @@
+' Estilo común de los diagramas (sobrio, legible en impresión)
+skinparam dpi 160
+skinparam shadowing false
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam backgroundColor #FFFFFF
+skinparam ArrowColor #33403B
+skinparam ArrowFontSize 11
+skinparam roundCorner 8
+skinparam NoteBackgroundColor #F4F6F4
+skinparam NoteBorderColor #9AA8A1
+skinparam ActorBorderColor #0B5E4C
+skinparam ActorBackgroundColor #E3EFEA
+skinparam UsecaseBorderColor #0B5E4C
+skinparam UsecaseBackgroundColor #FFFFFF
+skinparam ComponentBorderColor #0B5E4C
+skinparam ComponentBackgroundColor #FFFFFF
+skinparam DatabaseBorderColor #33403B
+skinparam DatabaseBackgroundColor #F4F6F4
+skinparam PackageBorderColor #9AA8A1
+skinparam PackageBackgroundColor #FBFCFB
+skinparam RectangleBorderColor #9AA8A1
+skinparam ParticipantBorderColor #0B5E4C
+skinparam ParticipantBackgroundColor #E3EFEA
+skinparam SequenceLifeLineBorderColor #9AA8A1
+skinparam SequenceGroupBorderColor #9AA8A1
+skinparam ActivityBorderColor #0B5E4C
+skinparam ActivityBackgroundColor #FFFFFF
+skinparam ActivityDiamondBorderColor #C2571A
+skinparam ActivityDiamondBackgroundColor #FFF4EC
+skinparam ClassBorderColor #0B5E4C
+skinparam ClassBackgroundColor #FFFFFF
+skinparam ClassHeaderBackgroundColor #E3EFEA

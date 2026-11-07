@@ -1,0 +1,122 @@
+{
+  "realm": "ruta-salud",
+  "displayName": "Ruta Salud Rural · Fusagasugá",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "resetPasswordAllowed": false,
+  "rememberMe": false,
+  "loginWithEmailAllowed": false,
+  "bruteForceProtected": true,
+  "failureFactor": 5,
+  "waitIncrementSeconds": 60,
+  "maxFailureWaitSeconds": 900,
+  "permanentLockout": false,
+  "passwordPolicy": "length(10) and upperCase(1) and lowerCase(1) and digits(1) and notUsername",
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "eventsEnabled": true,
+  "eventsExpiration": 2592000,
+  "adminEventsEnabled": true,
+  "adminEventsDetailsEnabled": true,
+  "roles": {
+    "realm": [
+      { "name": "coordinador", "description": "Genera rutas y confirma jornadas ejecutadas" },
+      { "name": "equipo_salud", "description": "Consulta rutas y pregunta al asistente" },
+      { "name": "auditor", "description": "Consulta el registro de auditoría y reproduce rutas" },
+      { "name": "servicio_interno", "description": "Cuentas de servicio (client credentials) entre microservicios" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "svc-rutas",
+      "name": "Microservicio de rutas",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${KC_SVC_RUTAS_SECRET}",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "protocol": "openid-connect",
+      "protocolMappers": [
+        { "name": "audiencia-api", "protocol": "openid-connect", "protocolMapper": "oidc-audience-mapper",
+          "config": { "included.custom.audience": "ruta-salud-api", "access.token.claim": "true", "id.token.claim": "false", "introspection.token.claim": "true" } }
+      ]
+    },
+    {
+      "clientId": "svc-ia",
+      "name": "Microservicio de IA",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${KC_SVC_IA_SECRET}",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "protocol": "openid-connect",
+      "protocolMappers": [
+        { "name": "audiencia-api", "protocol": "openid-connect", "protocolMapper": "oidc-audience-mapper",
+          "config": { "included.custom.audience": "ruta-salud-api", "access.token.claim": "true", "id.token.claim": "false", "introspection.token.claim": "true" } }
+      ]
+    },
+    {
+      "clientId": "web-ruta-salud",
+      "name": "Aplicación web (Authorization Code + PKCE)",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["${FRONTEND_URL}/*", "http://localhost:5173/*"],
+      "webOrigins": ["+"],
+      "attributes": { "pkce.code.challenge.method": "S256", "post.logout.redirect.uris": "+" },
+      "protocol": "openid-connect",
+      "protocolMappers": [
+        { "name": "audiencia-api", "protocol": "openid-connect", "protocolMapper": "oidc-audience-mapper",
+          "config": { "included.custom.audience": "ruta-salud-api", "access.token.claim": "true", "id.token.claim": "false", "introspection.token.claim": "true" } }
+      ]
+    },
+    {
+      "clientId": "cli-pruebas",
+      "name": "Cliente de pruebas por terminal (SOLO DESARROLLO: deshabilitar en producción)",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "protocol": "openid-connect",
+      "protocolMappers": [
+        { "name": "audiencia-api", "protocol": "openid-connect", "protocolMapper": "oidc-audience-mapper",
+          "config": { "included.custom.audience": "ruta-salud-api", "access.token.claim": "true", "id.token.claim": "false", "introspection.token.claim": "true" } }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "coordinador.fusa", "enabled": true, "emailVerified": true,
+      "firstName": "Coordinación", "lastName": "Atención Extramural", "email": "coordinador@ruta-salud.local",
+      "credentials": [{ "type": "password", "value": "${KC_PASS_COORDINADOR}", "temporary": false }],
+      "realmRoles": ["coordinador"]
+    },
+    {
+      "username": "equipo.salud", "enabled": true, "emailVerified": true,
+      "firstName": "Equipo", "lastName": "Salud Rural", "email": "equipo@ruta-salud.local",
+      "credentials": [{ "type": "password", "value": "${KC_PASS_EQUIPO}", "temporary": false }],
+      "realmRoles": ["equipo_salud"]
+    },
+    {
+      "username": "auditor.fusa", "enabled": true, "emailVerified": true,
+      "firstName": "Auditoría", "lastName": "Control Interno", "email": "auditor@ruta-salud.local",
+      "credentials": [{ "type": "password", "value": "${KC_PASS_AUDITOR}", "temporary": false }],
+      "realmRoles": ["auditor"]
+    },
+    { "username": "service-account-svc-rutas", "enabled": true, "serviceAccountClientId": "svc-rutas", "realmRoles": ["servicio_interno"] },
+    { "username": "service-account-svc-ia", "enabled": true, "serviceAccountClientId": "svc-ia", "realmRoles": ["servicio_interno"] }
+  ]
+}

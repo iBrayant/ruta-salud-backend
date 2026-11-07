@@ -1,0 +1,63 @@
+@startuml casos_uso
+!include estilo.iuml
+title Diagrama de casos de uso — Ruta Salud Rural Fusagasugá
+left to right direction
+
+actor "Coordinador\nde la jornada" as coord
+actor "Equipo de salud" as equipo
+actor "Auditor" as auditor
+actor "Keycloak\n(OAuth 2.0)" as kc <<sistema>>
+actor "APIs externas\n(OSRM, Open-Meteo,\nOpenAI)" as ext <<sistema>>
+
+rectangle "Sistema Ruta Salud Rural" {
+  usecase "Iniciar sesión" as UC0
+  usecase "Consultar veredas e\níndice de vulnerabilidad" as UC1
+  usecase "Generar ruta priorizada\nde la jornada" as UC2
+  usecase "Simular varias jornadas\n(cobertura y equidad)" as UC3
+  usecase "Consultar rutas generadas" as UC4
+  usecase "Confirmar jornada ejecutada" as UC5
+  usecase "Preguntar al asistente\nsobre una ruta" as UC6
+  usecase "Consultar registro\nde auditoría" as UC7
+  usecase "Verificar integridad\nde la auditoría" as UC8
+  usecase "Reproducir una ruta\npasada" as UC9
+  usecase "Explicar la ruta con IA\ny revisión ética" as UC10
+  usecase "Registrar evento\nde auditoría" as UC11
+}
+
+coord --> UC0
+equipo --> UC0
+auditor --> UC0
+UC0 ..> kc
+
+coord --> UC1
+coord --> UC2
+coord --> UC3
+coord --> UC4
+coord --> UC5
+coord --> UC6
+
+equipo --> UC1
+equipo --> UC4
+equipo --> UC6
+
+auditor --> UC1
+auditor --> UC4
+auditor --> UC3
+auditor --> UC7
+auditor --> UC8
+auditor --> UC9
+
+UC2 ..> UC10 : <<include>>
+UC2 ..> UC11 : <<include>>
+UC5 ..> UC11 : <<include>>
+UC6 ..> UC11 : <<include>>
+UC9 ..> UC11 : <<include>>
+UC2 ..> ext
+UC10 ..> ext
+UC6 ..> ext
+
+note right of UC10
+  La IA explica la ruta;
+  no decide el orden.
+end note
+@enduml

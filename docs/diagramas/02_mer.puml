@@ -1,0 +1,72 @@
+@startuml mer
+!include estilo.iuml
+title Modelo entidad-relación (una base de datos por microservicio)
+hide circle
+left to right direction
+
+package "Archivo de datos (solo lectura)" {
+  entity "veredas.json" as ver {
+    * id : text  (código oficial, ej. 05-18)
+    --
+    * nombre, corregimiento
+    * lat, lon
+    * vulnerabilidad (índice + componentes)
+    * via_acceso.tipo
+    * acceso_hospital (km, min)
+  }
+}
+
+package "rutas_db (servicio de rutas)" {
+  entity "rutas" as rutas {
+    * id : uuid <<PK>>
+    --
+    * codigo : text <<UNIQUE>>
+    * fecha_jornada : date
+    * creado_en : timestamptz
+    * creado_por : text
+    * estado : text  (propuesta | ejecutada)
+    * parametros : jsonb
+    * snapshot : jsonb  (entradas del algoritmo)
+    * huella_entradas : char(64)
+    * resultado : jsonb  (orden, km, horarios)
+    * huella_resultado : char(64)
+    * version_datos : text
+    explicacion : jsonb
+    ejecutada_por : text
+    ejecutada_en : timestamptz
+  }
+}
+
+package "auditoria_db (servicio de auditoría)" {
+  entity "eventos_auditoria" as ev {
+    * seq : bigint <<PK>>
+    --
+    * ts : timestamptz
+    * accion : text
+    * actor : text
+    * actor_tipo : text
+    * roles : jsonb
+    * recurso : text  (ej. "ruta:<id>")
+    * detalle : jsonb
+    * ip : text
+    * servicio_origen : text
+    * hash_anterior : char(64)
+    * registro_canonico : text
+    * hash : char(64) <<UNIQUE>>
+  }
+}
+
+ver ||..o{ rutas : "resultado.orden\nincluye ids de vereda"
+rutas ||..o{ ev : "recurso = ruta:<id>\n(relación lógica)"
+ev ||..|| ev : "hash_anterior =\nhash del evento previo"
+
+note bottom of rutas
+  Permiso por columna: la aplicación solo
+  puede actualizar estado y explicación.
+end note
+note bottom of ev
+  Inmutable: triggers bloquean
+  UPDATE, DELETE y TRUNCATE.
+  La aplicación solo tiene INSERT y SELECT.
+end note
+@enduml

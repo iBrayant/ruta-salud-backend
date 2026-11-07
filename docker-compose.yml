@@ -1,0 +1,153 @@
+name: ruta-salud
+
+x-servicio-python: &servicio-python
+  restart: unless-stopped
+  security_opt: ["no-new-privileges:true"]
+  read_only: true
+  tmpfs: ["/tmp"]
+  networks: [borde, datos]
+
+x-entorno-oauth: &entorno-oauth
+  TZ: America/Bogota
+  KEYCLOAK_ISSUER: ${PUBLIC_BASE_URL}/auth/realms/ruta-salud
+  KEYCLOAK_JWKS_URL: http://keycloak:8080/auth/realms/ruta-salud/protocol/openid-connect/certs
+  KEYCLOAK_TOKEN_URL: http://keycloak:8080/auth/realms/ruta-salud/protocol/openid-connect/token
+  API_AUDIENCE: ruta-salud-api
+
+services:
+  postgres:
+    image: postgres:16.6-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?}
+      RUTAS_DB_PASSWORD: ${RUTAS_DB_PASSWORD:?}
+      AUDITORIA_DB_PASSWORD: ${AUDITORIA_DB_PASSWORD:?}
+      TZ: America/Bogota
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infra/postgres/01-init.sh:/docker-entrypoint-initdb.d/01-init.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      retries: 20
+    networks: [datos]
+
+  redis:
+    image: redis:7.4.2-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?}", "--save", "", "--appendonly", "no",
+              "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru"]
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" --no-auth-warning ping | grep -q PONG"]
+      interval: 5s
+      retries: 20
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?}
+    networks: [datos]
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0.7
+    restart: unless-stopped
+    command: ["start", "--import-realm"]
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak_db
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?}
+      KC_HOSTNAME: ${PUBLIC_BASE_URL}/auth
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "false"   # los servicios usan la URL interna fija, no el descubrimiento
+      KC_HTTP_ENABLED: "true"
+      KC_HTTP_RELATIVE_PATH: /auth
+      KC_PROXY_HEADERS: xforwarded
+      KC_HEALTH_ENABLED: "true"
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_ADMIN_USER:?}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_ADMIN_PASSWORD:?}
+      KC_SVC_RUTAS_SECRET: ${KC_SVC_RUTAS_SECRET:?}
+      KC_SVC_IA_SECRET: ${KC_SVC_IA_SECRET:?}
+      KC_PASS_COORDINADOR: ${KC_PASS_COORDINADOR:?}
+      KC_PASS_EQUIPO: ${KC_PASS_EQUIPO:?}
+      KC_PASS_AUDITOR: ${KC_PASS_AUDITOR:?}
+      FRONTEND_URL: ${FRONTEND_URL:?}
+      TZ: America/Bogota
+    volumes:
+      - ./infra/keycloak/realm-ruta-salud.json:/opt/keycloak/data/import/realm-ruta-salud.json:ro
+    depends_on:
+      postgres: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /auth/health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q UP <&3"]
+      interval: 10s
+      retries: 30
+      start_period: 40s
+    networks: [borde, datos]
+
+  auditoria:
+    <<: *servicio-python
+    build: { context: ., dockerfile: services/auditoria/Dockerfile }
+    environment:
+      <<: *entorno-oauth
+      DATABASE_URL: postgresql://auditoria_app:${AUDITORIA_DB_PASSWORD}@postgres:5432/auditoria_db
+    depends_on:
+      postgres: { condition: service_healthy }
+      keycloak: { condition: service_healthy }
+
+  ia:
+    <<: *servicio-python
+    build: { context: ., dockerfile: services/ia/Dockerfile }
+    environment:
+      <<: *entorno-oauth
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/1
+      OAUTH_CLIENT_ID: svc-ia
+      OAUTH_CLIENT_SECRET: ${KC_SVC_IA_SECRET}
+      AUDITORIA_URL: http://auditoria:8000
+      RUTAS_URL: http://rutas:8000
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4.1-mini}
+      IA_CHATS_POR_HORA: ${IA_CHATS_POR_HORA:-30}
+      IA_TOKENS_POR_DIA: ${IA_TOKENS_POR_DIA:-300000}
+    depends_on:
+      redis: { condition: service_healthy }
+      auditoria: { condition: service_healthy }
+
+  rutas:
+    <<: *servicio-python
+    build: { context: ., dockerfile: services/rutas/Dockerfile }
+    environment:
+      <<: *entorno-oauth
+      DATABASE_URL: postgresql://rutas_app:${RUTAS_DB_PASSWORD}@postgres:5432/rutas_db
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      OAUTH_CLIENT_ID: svc-rutas
+      OAUTH_CLIENT_SECRET: ${KC_SVC_RUTAS_SECRET}
+      AUDITORIA_URL: http://auditoria:8000
+      IA_URL: http://ia:8000
+      OSRM_URL: ${OSRM_URL:-https://router.project-osrm.org}
+      OPENMETEO_URL: https://api.open-meteo.com
+      VEREDAS_JSON: /data/veredas.json
+      CORS_ORIGINS: ${FRONTEND_URL},http://localhost:5173
+    volumes:
+      - ./data:/data:ro
+    depends_on:
+      redis: { condition: service_healthy }
+      auditoria: { condition: service_healthy }
+      ia: { condition: service_healthy }
+
+  gateway:
+    image: nginx:1.27.3-alpine
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${GATEWAY_PORT:-8080}:80"   # solo local; al exterior se sale por Cloudflare Tunnel
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./infra/nginx/seguridad.conf:/etc/nginx/seguridad.conf:ro
+    depends_on:
+      rutas: { condition: service_healthy }
+      keycloak: { condition: service_healthy }
+    networks: [borde]
+
+networks:
+  borde: {}
+  datos: { internal: true }   # Postgres y Redis sin salida a internet ni puertos publicados
+
+volumes:
+  pgdata: {}

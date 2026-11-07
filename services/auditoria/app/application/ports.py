@@ -1,0 +1,13 @@
+from __future__ import annotations
+
+from datetime import datetime
+from typing import Any, AsyncIterator, Callable, Protocol
+
+
+class RepositorioEventos(Protocol):
+    async def insertar_encadenado(self, construir: Callable[[int, str], tuple[str, str]], evento: dict[str, Any]
+                                  ) -> dict[str, Any]: ...
+    async def listar(self, accion: str | None, recurso: str | None, actor: str | None, desde: datetime | None,
+                     hasta: datetime | None, limite: int, desplazamiento: int) -> list[dict[str, Any]]: ...
+    async def obtener(self, seq: int) -> dict[str, Any] | None: ...
+    def eslabones(self) -> AsyncIterator[tuple[int, str, str]]: ...

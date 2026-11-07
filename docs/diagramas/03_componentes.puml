@@ -1,0 +1,61 @@
+@startuml componentes
+!include estilo.iuml
+title Diagrama de componentes
+left to right direction
+skinparam componentStyle rectangle
+skinparam nodesep 40
+skinparam ranksep 70
+
+actor "Usuario\n(navegador)" as user
+cloud "Cloudflare Tunnel\n(HTTPS, opcional)" as cf
+
+node "Servidor — Docker Compose" {
+  component "**Gateway Nginx**\nlímite de peticiones\nencabezados de seguridad\nbloquea rutas internas" as gw
+  component "**Keycloak**\nOAuth 2.0 / OIDC\nroles y contraseñas" as kc
+
+  component "**Microservicio rutas**\n--\npresentation: API FastAPI\napplication: casos de uso\ndomain: priorización + ruta\ninfrastructure: adaptadores" as rutas
+  component "**Microservicio ia**\n--\npresentation: API FastAPI\napplication: explicar / consultar\ndomain: reglas éticas, prompts\ninfrastructure: OpenAI, Redis" as ia
+  component "**Microservicio auditoría**\n--\npresentation: API FastAPI\napplication: registrar / verificar\ndomain: cadena de hashes\ninfrastructure: Postgres" as aud
+
+  package "Red interna «datos» (sin internet)" {
+    database "**PostgreSQL**\nrutas_db\nauditoria_db\nkeycloak_db" as pg
+    database "**Redis**\ncaché y límites" as redis
+  }
+}
+
+cloud "OSRM\n(OpenStreetMap)" as osrm
+cloud "Open-Meteo" as om
+cloud "OpenAI API" as oai
+
+user --> cf
+cf --> gw
+gw --> kc : /auth
+gw --> rutas : /api/rutas\n/api/veredas
+gw --> ia : /api/ia/consultas
+gw --> aud : /api/auditoria\n(solo lectura)
+
+rutas --> ia : explicar ruta
+rutas --> aud : registrar evento
+ia --> aud : registrar evento
+ia --> rutas : leer ruta\n(token del usuario)
+
+rutas --> osrm : km y minutos por vía
+rutas --> om : lluvia por hora
+ia --> oai : datos agregados,\nsin datos personales
+
+rutas --> pg
+aud --> pg
+kc --> pg
+rutas --> redis
+ia --> redis
+
+note bottom of rutas
+  Arquitectura limpia en cada servicio:
+  las dependencias apuntan hacia el dominio.
+  El dominio no conoce FastAPI, OSRM ni Postgres.
+end note
+note bottom of kc
+  Llamadas entre servicios usan
+  tokens client credentials.
+end note
+@enduml

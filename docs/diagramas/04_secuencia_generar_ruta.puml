@@ -1,0 +1,51 @@
+@startuml secuencia
+!include estilo.iuml
+title Diagrama de secuencia — Generar ruta priorizada
+autonumber
+
+actor "Coordinador" as U
+participant "Gateway\nNginx" as GW
+participant "Keycloak" as KC
+participant "Servicio\nrutas" as R
+participant "OSRM" as OSRM
+participant "Open-Meteo" as OM
+database "rutas_db" as RDB
+participant "Servicio\nauditoría" as A
+participant "Servicio\nIA" as IA
+participant "OpenAI" as OAI
+
+U -> GW : Iniciar sesión
+GW -> KC : Autenticación (OAuth 2.0)
+KC --> U : access token (JWT firmado, 5 min)
+
+U -> GW : POST /api/rutas {fecha, α, γ, ...}\nAuthorization: Bearer
+GW -> R : reenvía (límite de peticiones)
+R -> R : validar firma, emisor, audiencia,\nexpiración y rol "coordinador"
+R -> OSRM : matriz de distancias y tiempos por vía
+note right of OSRM : caché en Redis;\nsi falla: línea recta × 1,4
+OSRM --> R : km y minutos
+R -> OM : pronóstico de lluvia por hora
+OM --> R : probabilidad y mm por hora
+R -> RDB : última visita de cada vereda (equidad)
+RDB --> R
+R -> R : priorizar → descanso 7 días → seleccionar\n→ vecino más cercano + 2-opt → comparar con óptimo
+R -> KC : token de servicio (client credentials)
+KC --> R
+R -> A : registrar "ruta_generada"\n(parámetros, entradas, huellas SHA-256)
+A -> A : encadenar con el hash anterior
+A --> R : seq + hash
+alt la auditoría falla
+  R --> U : 503: la ruta NO se entrega
+end
+R -> RDB : guardar ruta (estado "propuesta")
+R -> IA : explicar ruta (token de servicio)
+IA -> OAI : 1) borrador de explicación
+OAI --> IA
+IA -> OAI : 2) revisión ética del borrador
+OAI --> IA : aprobado / texto corregido
+IA -> IA : 3) reglas fijas (estigma, imprecisión)\nsi falla todo: plantilla sin IA
+IA -> A : registrar "explicacion_generada"
+IA --> R : explicación + resultado de la revisión
+R -> RDB : guardar explicación
+R --> U : 201: orden de visita, distancia total,\nhorarios, brecha vs óptimo, explicación
+@enduml

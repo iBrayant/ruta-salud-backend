@@ -1,0 +1,51 @@
+@startuml actividades
+!include estilo.iuml
+title Diagrama de actividades — Algoritmo de priorización y ruta
+
+start
+:Recibir parámetros de la jornada
+(fecha, α, γ, n veredas, minutos de atención, duración);
+:Obtener matriz de tiempos y km por vía (OSRM);
+if (¿Considerar lluvia?) then (sí)
+  :Obtener pronóstico por hora (Open-Meteo);
+else (no)
+endif
+:Calcular días sin visita de cada vereda
+(rutas confirmadas como ejecutadas);
+
+partition "Fase 1: priorización" {
+  :Para cada vereda calcular
+  P = α·Vulnerabilidad + (1−α)·Accesibilidad + γ·Equidad;
+  note right
+    Accesibilidad: relativa al tiempo desde el hospital.
+    Con lluvia fuerte y vía destapada se reduce hasta 50 %.
+  end note
+  :Ordenar veredas de mayor a menor P;
+  while (¿Hay candidatas y faltan veredas por elegir?) is (sí)
+    if (¿Visitada hace menos de 7 días?) then (sí)
+      :Descartar (periodo de descanso);
+    else (no)
+      :Calcular ruta tentativa con la candidata;
+      if (¿Viaje + atención caben en la jornada?) then (sí)
+        :Agregar a la ruta;
+      else (no)
+        :Descartar (no cabe en la jornada);
+      endif
+    endif
+  endwhile (no)
+}
+
+partition "Fase 2: orden de visita" {
+  :Vecino más cercano desde el hospital;
+  :Mejorar con 2-opt
+  (invertir tramos mientras se reduzca el tiempo);
+  :Calcular el óptimo exacto (todas las permutaciones, n ≤ 8);
+  :Brecha = (heurístico − óptimo) / óptimo;
+}
+
+:Calcular horas de llegada y salida,
+distancia total y hora de regreso al hospital;
+:Guardar entradas y resultado con huellas SHA-256
+(permite reproducir la ruta);
+stop
+@enduml

@@ -1,0 +1,112 @@
+/* Misma interfaz que la aplicación web: modo claro, fuente del sistema, colores del Hospital San Rafael */
+:root {
+  --fondo: #f6f8f9;
+  --superficie: #ffffff;
+  --linea: #e3e8eb;
+  --campo: #d3dbdf;
+  --tinta: #1e2a30;
+  --tinta-2: #3e4c53;
+  --tenue: #5a6870;
+  --marca: #16748a;
+  --marca-hover: #115e70;
+  --marca-suave: #e6f2f5;
+  --error-suave: #fbeeee;
+  --error-texto: #8a2b2b;
+  --exito-suave: #eef5e4;
+  --exito-texto: #4d6b22;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  background: var(--fondo);
+  color: var(--tinta);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--marca); }
+a:hover { color: var(--marca-hover); }
+:focus-visible { outline: 2px solid var(--marca); outline-offset: 2px; }
+
+.rs-pagina {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 16px;
+}
+
+.rs-contenedor {
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.rs-marca { display: flex; flex-direction: column; line-height: 1.3; }
+.rs-nombre { font-weight: 600; font-size: 17px; }
+.rs-sub { font-size: 13px; color: var(--tenue); }
+
+.rs-tarjeta {
+  background: var(--superficie);
+  border: 1px solid var(--linea);
+  border-radius: 12px;
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.rs-titulo { margin: 0; font-size: 20px; font-weight: 600; }
+.rs-texto { margin: -8px 0 0; font-size: 14px; color: var(--tenue); }
+.rs-nota { margin: 0; font-size: 12.5px; color: var(--tenue); }
+.rs-pie { margin: 0; font-size: 12.5px; color: var(--tenue); text-align: center; }
+
+/* Formulario propio y formularios genéricos de las demás páginas de Keycloak */
+.rs-form, .rs-tarjeta form { display: flex; flex-direction: column; gap: 16px; margin: 0; }
+.rs-campo, .rs-tarjeta form > div { display: flex; flex-direction: column; gap: 6px; }
+
+label { font-size: 13px; color: var(--tinta-2); }
+
+input[type="text"], input[type="password"], input[type="email"], select {
+  height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--campo);
+  border-radius: 8px;
+  background: var(--superficie);
+  color: var(--tinta);
+  font: inherit;
+  width: 100%;
+}
+input[aria-invalid="true"] { border-color: var(--error-texto); }
+
+.rs-boton, input[type="submit"], button[type="submit"] {
+  min-height: 44px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--marca);
+  color: #ffffff;
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0 16px;
+}
+.rs-boton:hover, input[type="submit"]:hover, button[type="submit"]:hover { background: var(--marca-hover); }
+
+.rs-alerta {
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 14px;
+  background: var(--marca-suave);
+  color: var(--marca-hover);
+}
+.rs-alerta-error { background: var(--error-suave); color: var(--error-texto); }
+.rs-alerta-success { background: var(--exito-suave); color: var(--exito-texto); }
+
+.rs-info { font-size: 13.5px; color: var(--tinta-2); }
